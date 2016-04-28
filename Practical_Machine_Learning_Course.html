@@ -129,29 +129,35 @@ library(rpart.plot)
 library(RColorBrewer)
 library(rattle)
 library(randomForest)
-set.seed(20160428)</code></pre>
+set.seed(428)</code></pre>
+</div>
+<div id="data-preprocessing" class="section level1">
+<h1>Data Preprocessing</h1>
+<p>Firstly, combine the two CSV files into one. This guarantees that the data type of the training and texting data sets are the same.</p>
 <p>Load the data</p>
 <pre class="r"><code>#the following code is for the examiner
-training &lt;- read.csv(url(trainUrl &lt;- &quot;http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;), na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))
-testing &lt;- read.csv(url(&quot;http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;), na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))
+#training &lt;- read.csv(url(trainUrl &lt;- &quot;http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;), na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))
+#testing &lt;- read.csv(url(&quot;http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;), na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))
 
 #the following code is for me
 #training &lt;- read.csv(&quot;F:\\R_WorkDir\\Practical Machine Learning Course\\pml-training.csv&quot;, na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))
 #testing &lt;- read.csv(&quot;F:\\R_WorkDir\\Practical Machine Learning Course\\pml-testing.csv&quot;, na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))
+
+
+#training=all[all$classe != 0,]
+#testing=all[all$classe == 0,]
 #index column is not needed.
-training$X =NULL
-testing$X = NULL</code></pre>
-<pre class="r"><code>inTrain &lt;- createDataPartition(y=training$classe, p=0.6, list=FALSE)
-myTraining &lt;- training[inTrain, ]; 
-myTesting &lt;- training[-inTrain, ]
-dim(myTraining); dim(myTesting)</code></pre>
-<pre><code>## [1] 11776   159</code></pre>
-<pre><code>## [1] 7846  159</code></pre>
+#training$X =NULL
+#testing$X = NULL
+
+#this file is given in the github
+all &lt;- read.csv(&quot;F:\\R_WorkDir\\Practical Machine Learning Course\\pml-all.csv&quot;, na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))
+all$X = NULL</code></pre>
 </div>
 <div id="cleaning-the-data" class="section level1">
 <h1>Cleaning the data</h1>
-<pre class="r"><code>myDataNZV &lt;- nearZeroVar(myTraining, saveMetrics=TRUE)
-myNZVvars &lt;- names(myTraining) %in% c(&quot;new_window&quot;, &quot;kurtosis_roll_belt&quot;, &quot;kurtosis_picth_belt&quot;,
+<pre class="r"><code>myDataNZV &lt;- nearZeroVar(all, saveMetrics=TRUE)
+myNZVvars &lt;- names(all) %in% c(&quot;new_window&quot;, &quot;kurtosis_roll_belt&quot;, &quot;kurtosis_picth_belt&quot;,
 &quot;kurtosis_yaw_belt&quot;, &quot;skewness_roll_belt&quot;, &quot;skewness_roll_belt.1&quot;, &quot;skewness_yaw_belt&quot;,
 &quot;max_yaw_belt&quot;, &quot;min_yaw_belt&quot;, &quot;amplitude_yaw_belt&quot;, &quot;avg_roll_arm&quot;, &quot;stddev_roll_arm&quot;,
 &quot;var_roll_arm&quot;, &quot;avg_pitch_arm&quot;, &quot;stddev_pitch_arm&quot;, &quot;var_pitch_arm&quot;, &quot;avg_yaw_arm&quot;,
@@ -166,33 +172,35 @@ myNZVvars &lt;- names(myTraining) %in% c(&quot;new_window&quot;, &quot;kurtosis_
 &quot;amplitude_yaw_forearm&quot;, &quot;avg_roll_forearm&quot;, &quot;stddev_roll_forearm&quot;, &quot;var_roll_forearm&quot;,
 &quot;avg_pitch_forearm&quot;, &quot;stddev_pitch_forearm&quot;, &quot;var_pitch_forearm&quot;, &quot;avg_yaw_forearm&quot;,
 &quot;stddev_yaw_forearm&quot;, &quot;var_yaw_forearm&quot;)
-myTraining &lt;- myTraining[!myNZVvars]
-testing &lt;- testing[!myNZVvars]
-#To check the new N?? of observations
-dim(myTraining)</code></pre>
-<pre><code>## [1] 11776    99</code></pre>
-<pre class="r"><code>myTraining.copy &lt;- myTraining #creating another subset to iterate in loop
-for(i in 1:length(myTraining)) { 
-        if( sum( is.na( myTraining[, i] ) ) /nrow(myTraining) &gt;= .6 ) { 
-        for(j in 1:length(myTraining.copy)) {
-            if( length( grep(names(myTraining[i]), names(myTraining.copy)[j]) ) ==1)  { #if the columns are the same:
-                myTraining.copy &lt;- myTraining.copy[ , -j] #Remove that column
+all &lt;- all[!myNZVvars]
+dim(all)</code></pre>
+<pre><code>## [1] 19642    99</code></pre>
+<pre class="r"><code>all.copy &lt;- all #creating another subset to iterate in loop
+for(i in 1:length(all)) { #for every column in the training dataset
+        if( sum( is.na( all[, i] ) ) /nrow(all) &gt;= .6 ) { #if n?? NAs &gt; 60% of total observations
+        for(j in 1:length(all)) {
+            if( length( grep(names(all[i]), names(all.copy)[j]) ) ==1)  { #if the columns are the same:
+                all.copy &lt;- all.copy[ , -j] #Remove that column
             }   
         } 
     }
 }
-myTraining &lt;- myTraining.copy
-
-clean1 &lt;- colnames(myTraining)
-clean2 &lt;- colnames(myTraining[, -58])
-myTesting &lt;- myTesting[clean1]
-testing &lt;- testing[clean2]
-
-dim(myTesting)</code></pre>
+all = all.copy</code></pre>
+</div>
+<div id="split-the-data" class="section level1">
+<h1>Split the data</h1>
+<pre class="r"><code>all.length=length(all$user_name)
+training=head(all,all.length-20)
+testing=tail(all,20)
+inTrain &lt;- createDataPartition(y=training$classe, p=0.6, list=FALSE)
+myTraining &lt;- training[inTrain, ]; 
+myTesting &lt;- training[-inTrain, ]
+dim(myTraining); dim(myTesting)</code></pre>
+<pre><code>## [1] 11776    58</code></pre>
 <pre><code>## [1] 7846   58</code></pre>
 </div>
-<div id="train-the-model-and-test-the-model" class="section level1">
-<h1>Train the model and test the model</h1>
+<div id="train-rpart" class="section level1">
+<h1>Train rpart</h1>
 <pre class="r"><code>my.model &lt;- rpart(classe ~ ., data=myTraining, method=&quot;class&quot;)
 my.testing.result = predict(my.model, myTesting, type = &quot;class&quot;)
 confusionMatrix(my.testing.result, myTesting$classe)</code></pre>
@@ -200,40 +208,80 @@ confusionMatrix(my.testing.result, myTesting$classe)</code></pre>
 ## 
 ##           Reference
 ## Prediction    A    B    C    D    E
-##          A 2157  207    8    2    0
-##          B   55 1125   81   76    0
-##          C   20  177 1260  138   66
-##          D    0    9    9  878   95
-##          E    0    0   10  192 1281
+##          A 2158  203   11    1    0
+##          B   54 1130   76   65    0
+##          C   20  178 1260  153   54
+##          D    0    7   21 1010  182
+##          E    0    0    0   57 1206
 ## 
 ## Overall Statistics
 ##                                           
-##                Accuracy : 0.8541          
-##                  95% CI : (0.8461, 0.8618)
+##                Accuracy : 0.8621          
+##                  95% CI : (0.8543, 0.8697)
 ##     No Information Rate : 0.2845          
 ##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
 ##                                           
-##                   Kappa : 0.8149          
+##                   Kappa : 0.8253          
 ##  Mcnemar's Test P-Value : NA              
 ## 
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            0.9664   0.7411   0.9211   0.6827   0.8883
-## Specificity            0.9613   0.9665   0.9381   0.9828   0.9685
-## Pos Pred Value         0.9086   0.8414   0.7586   0.8860   0.8638
-## Neg Pred Value         0.9863   0.9396   0.9825   0.9405   0.9747
+## Sensitivity            0.9668   0.7444   0.9211   0.7854   0.8363
+## Specificity            0.9617   0.9692   0.9375   0.9680   0.9911
+## Pos Pred Value         0.9094   0.8528   0.7568   0.8279   0.9549
+## Neg Pred Value         0.9865   0.9405   0.9825   0.9583   0.9642
 ## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
-## Detection Rate         0.2749   0.1434   0.1606   0.1119   0.1633
-## Detection Prevalence   0.3026   0.1704   0.2117   0.1263   0.1890
-## Balanced Accuracy      0.9639   0.8538   0.9296   0.8328   0.9284</code></pre>
+## Detection Rate         0.2750   0.1440   0.1606   0.1287   0.1537
+## Detection Prevalence   0.3024   0.1689   0.2122   0.1555   0.1610
+## Balanced Accuracy      0.9643   0.8568   0.9293   0.8767   0.9137</code></pre>
+</div>
+<div id="train-random-forest" class="section level1">
+<h1>Train Random Forest</h1>
+<pre class="r"><code>my.rf &lt;- randomForest(classe ~. , data=myTraining)
+rf.predict &lt;- predict(my.rf, myTesting, type = &quot;class&quot;)
+confusionMatrix(rf.predict, myTesting$classe)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 2231    6    0    0    0
+##          B    1 1512    1    0    0
+##          C    0    0 1367    2    0
+##          D    0    0    0 1284    3
+##          E    0    0    0    0 1439
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9983          
+##                  95% CI : (0.9972, 0.9991)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9979          
+##  Mcnemar's Test P-Value : NA              
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9996   0.9960   0.9993   0.9984   0.9979
+## Specificity            0.9989   0.9997   0.9997   0.9995   1.0000
+## Pos Pred Value         0.9973   0.9987   0.9985   0.9977   1.0000
+## Neg Pred Value         0.9998   0.9991   0.9998   0.9997   0.9995
+## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2843   0.1927   0.1742   0.1637   0.1834
+## Detection Prevalence   0.2851   0.1930   0.1745   0.1640   0.1834
+## Balanced Accuracy      0.9992   0.9979   0.9995   0.9990   0.9990</code></pre>
 </div>
 <div id="predict" class="section level1">
 <h1>Predict</h1>
-<pre class="r"><code>predictions &lt;- predict(my.model, testing, type = &quot;class&quot;)
+<p>Compare the two models. Random forest is more accurate and it used.</p>
+<pre class="r"><code>predictions &lt;- predict(my.rf, testing, type = &quot;class&quot;)
 predictions</code></pre>
-<pre><code>##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
-##  B  A  C  A  A  E  D  C  A  A  B  C  B  A  E  E  A  B  B  B 
+<pre><code>## 19623 19624 19625 19626 19627 19628 19629 19630 19631 19632 19633 19634 
+##     B     A     B     A     A     E     D     B     A     A     B     C 
+## 19635 19636 19637 19638 19639 19640 19641 19642 
+##     B     A     E     E     A     B     B     B 
 ## Levels: A B C D E</code></pre>
 </div>
 

@@ -20,37 +20,39 @@ library(rpart.plot)
 library(RColorBrewer)
 library(rattle)
 library(randomForest)
-set.seed(20160428)
+set.seed(428)
 ```
+
+#Data Preprocessing
+Firstly, combine the two CSV files into one. This guarantees that the data type of the training and texting data sets are the same.
 
 Load the data
 ```{r}
 #the following code is for the examiner
-training <- read.csv(url(trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"), na.strings=c("NA","#DIV/0!",""))
-testing <- read.csv(url("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"), na.strings=c("NA","#DIV/0!",""))
+#training <- read.csv(url(trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"), na.strings=c("NA","#DIV/0!",""))
+#testing <- read.csv(url("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"), na.strings=c("NA","#DIV/0!",""))
 
 #the following code is for me
 #training <- read.csv("F:\\R_WorkDir\\Practical Machine Learning Course\\pml-training.csv", na.strings=c("NA","#DIV/0!",""))
 #testing <- read.csv("F:\\R_WorkDir\\Practical Machine Learning Course\\pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+
+
+#training=all[all$classe != 0,]
+#testing=all[all$classe == 0,]
 #index column is not needed.
-training$X =NULL
-testing$X = NULL
+#training$X =NULL
+#testing$X = NULL
 
-
-```
-
-```{r}
-inTrain <- createDataPartition(y=training$classe, p=0.6, list=FALSE)
-myTraining <- training[inTrain, ]; 
-myTesting <- training[-inTrain, ]
-dim(myTraining); dim(myTesting)
+#this file is given in the github
+all <- read.csv("F:\\R_WorkDir\\Practical Machine Learning Course\\pml-all.csv", na.strings=c("NA","#DIV/0!",""))
+all$X = NULL
 ```
 
 #Cleaning the data
 
 ```{r}
-myDataNZV <- nearZeroVar(myTraining, saveMetrics=TRUE)
-myNZVvars <- names(myTraining) %in% c("new_window", "kurtosis_roll_belt", "kurtosis_picth_belt",
+myDataNZV <- nearZeroVar(all, saveMetrics=TRUE)
+myNZVvars <- names(all) %in% c("new_window", "kurtosis_roll_belt", "kurtosis_picth_belt",
 "kurtosis_yaw_belt", "skewness_roll_belt", "skewness_roll_belt.1", "skewness_yaw_belt",
 "max_yaw_belt", "min_yaw_belt", "amplitude_yaw_belt", "avg_roll_arm", "stddev_roll_arm",
 "var_roll_arm", "avg_pitch_arm", "stddev_pitch_arm", "var_pitch_arm", "avg_yaw_arm",
@@ -65,42 +67,51 @@ myNZVvars <- names(myTraining) %in% c("new_window", "kurtosis_roll_belt", "kurto
 "amplitude_yaw_forearm", "avg_roll_forearm", "stddev_roll_forearm", "var_roll_forearm",
 "avg_pitch_forearm", "stddev_pitch_forearm", "var_pitch_forearm", "avg_yaw_forearm",
 "stddev_yaw_forearm", "var_yaw_forearm")
-myTraining <- myTraining[!myNZVvars]
-testing <- testing[!myNZVvars]
-#To check the new N?? of observations
-dim(myTraining)
+all <- all[!myNZVvars]
+dim(all)
 ```
 
 ```{r}
-myTraining.copy <- myTraining #creating another subset to iterate in loop
-for(i in 1:length(myTraining)) { 
-        if( sum( is.na( myTraining[, i] ) ) /nrow(myTraining) >= .6 ) { 
-        for(j in 1:length(myTraining.copy)) {
-            if( length( grep(names(myTraining[i]), names(myTraining.copy)[j]) ) ==1)  { #if the columns are the same:
-                myTraining.copy <- myTraining.copy[ , -j] #Remove that column
+all.copy <- all #creating another subset to iterate in loop
+for(i in 1:length(all)) { #for every column in the training dataset
+        if( sum( is.na( all[, i] ) ) /nrow(all) >= .6 ) { #if n?? NAs > 60% of total observations
+        for(j in 1:length(all)) {
+            if( length( grep(names(all[i]), names(all.copy)[j]) ) ==1)  { #if the columns are the same:
+                all.copy <- all.copy[ , -j] #Remove that column
             }   
         } 
     }
 }
-myTraining <- myTraining.copy
-
-clean1 <- colnames(myTraining)
-clean2 <- colnames(myTraining[, -58])
-myTesting <- myTesting[clean1]
-testing <- testing[clean2]
-
-dim(myTesting)
+all = all.copy
 ```
 
-#Train the model and test the model
+#Split the data
 ```{r}
+all.length=length(all$user_name)
+training=head(all,all.length-20)
+testing=tail(all,20)
+inTrain <- createDataPartition(y=training$classe, p=0.6, list=FALSE)
+myTraining <- training[inTrain, ]; 
+myTesting <- training[-inTrain, ]
+dim(myTraining); dim(myTesting)
+```
+
+#Train rpart
+```{r rpart}
 my.model <- rpart(classe ~ ., data=myTraining, method="class")
 my.testing.result = predict(my.model, myTesting, type = "class")
 confusionMatrix(my.testing.result, myTesting$classe)
 ```
+#Train Random Forest
+```{r random_forest}
+my.rf <- randomForest(classe ~. , data=myTraining)
+rf.predict <- predict(my.rf, myTesting, type = "class")
+confusionMatrix(rf.predict, myTesting$classe)
+```
 
 #Predict
-```{r}
-predictions <- predict(my.model, testing, type = "class")
+Compare the two models. Random forest is more accurate and it used.
+```{r predict}
+predictions <- predict(my.rf, testing, type = "class")
 predictions
 ```
